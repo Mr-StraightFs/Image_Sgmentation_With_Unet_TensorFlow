@@ -69,6 +69,7 @@ def preprocess(image, mask):
 image_ds = dataset.map(process_path)
 processed_image_ds = image_ds.map(preprocess)
 
+# Encoder (Downsampling Block)
 # Inplement a Funct. defining a Conv Layer with optional dropout and Maxpooling layers as hyperparames
 def conv_block(inputs=None, n_filters=32, dropout_prob=0, max_pooling=True):
     """
@@ -109,3 +110,38 @@ def conv_block(inputs=None, n_filters=32, dropout_prob=0, max_pooling=True):
     skip_connection = conv
 
     return next_layer, skip_connection
+
+# Decoder (Upsampling Block)
+
+def upsampling_block(expansive_input, contractive_input, n_filters=32):
+    """
+    Convolutional upsampling block
+
+    Arguments:
+        expansive_input -- Input tensor from previous layer
+        contractive_input -- Input tensor from previous skip layer
+        n_filters -- Number of filters for the convolutional layers
+    Returns:
+        conv -- Tensor output
+    """
+
+    up = Conv2DTranspose(
+        n_filters,  # number of filters
+        (3, 3),  # Kernel size
+        strides=(2, 2),
+        padding='same')(expansive_input)
+
+    # Merge the previous output and the contractive_input
+    merge = concatenate([up, contractive_input], axis=3)
+    conv = Conv2D(n_filters,  # Number of filters
+                  (3, 3),  # Kernel size
+                  activation='relu',
+                  padding='same',
+                  kernel_initializer='he_normal')(merge)
+    conv = Conv2D(n_filters,  # Number of filters
+                  (3, 3),  # Kernel size
+                  activation='relu',
+                  padding='same',
+                  kernel_initializer='he_normal')(conv)
+
+    return conv
